@@ -16,10 +16,11 @@ Identify users logging in outside of the US.
 ```
 
 also consider endpoints that you exect to log in remotely. You can exclude those
-by doing a ComputerName!="exampe"
-
+by doing a ```ComputerName!="exampe"
+```
 If youre into visuals, you can map it out with
-  | worldMap(ip=aip)
+```  | worldMap(ip=aip)
+```
 
 Find a computers external IP over a time period:
 - 
@@ -28,3 +29,19 @@ Find a computers external IP over a time period:
 |groupBy([aip,ComputerName])
 ```
 
+Identify Brute Force Network Logon Attempts
+-
+```#event_simpleName = UserLogonFailed2
+| Technique = "Brute Force"
+| LogonType = 3
+```
+Also consider type 2 is interactive, or directly on the endpoint. Here we
+are also identifying users who are admin. This will output the Username | Endpoint
+and the count, which you can then sort it on. If no enduser is admin, you can omit
+the UserIsAdmin portion.
+
+```#event_simpleName = UserLogonFailed2
+| LogonType = 2
+| UserIsAdmin = 1
+| groupBy([UserName, ComputerName])
+```
