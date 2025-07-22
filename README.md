@@ -1,7 +1,8 @@
 # crowdstrike_queries
 Quick Win and Obscure Queries
 
-**Identify users logging in outside of the US. **
+Identify users logging in outside of the US.
+-
 
   The neat trick with this is we're using the
   sensor's IP to identify where the user is located. This bypasses users who may be logging
@@ -18,3 +19,10 @@ Quick Win and Obscure Queries
 
 If youre into visuals, you can map it out with
   | worldMap(ip=aip)
+
+Find a computers external IP over a time period:
+- 
+#event_simpleName = NetworkConnectIP4
+|ComputerName = "MacBook-Pro-3.local"
+|groupBy([aip,ComputerName])
+
