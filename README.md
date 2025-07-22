@@ -16,3 +16,5 @@ Quick Win and Obscure Queries
   also consider endpoints that you exect to log in remotely. You can exclude those
   by doing a ComputerName!="exampe"
 
+If youre into visuals, you can map it out with
+  | worldMap(ip=aip)
