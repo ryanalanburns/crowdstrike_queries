@@ -12,10 +12,11 @@ Identify users logging in outside of the US.
 | in(aid, values=[*], ignoreCase=true)
 | ipLocation(aip)
 | aip.country!="US"
-| table([timestamp,ComputerName,aip.city,aip.country])```
+| table([timestamp,ComputerName,aip.city,aip.country])
+```
 
-  also consider endpoints that you exect to log in remotely. You can exclude those
-  by doing a ComputerName!="exampe"
+also consider endpoints that you exect to log in remotely. You can exclude those
+by doing a ComputerName!="exampe"
 
 If youre into visuals, you can map it out with
   | worldMap(ip=aip)
@@ -24,5 +25,6 @@ Find a computers external IP over a time period:
 - 
 ```#event_simpleName = NetworkConnectIP4
 |ComputerName = "MacBook-Pro-3.local"
-|groupBy([aip,ComputerName])```
+|groupBy([aip,ComputerName])
+```
 
