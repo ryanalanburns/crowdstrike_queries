@@ -77,5 +77,7 @@ The query starts by filtering for events of type NewExecutableRenamed (indicatin
 
 A join operation is used to correlate the NewExecutableRenamed events with ProcessRollup2 events. 
 The join is performed on the aid (sensor ID) and the TargetFileName from the NewExecutableRenamed event with the ImageFileName from the ProcessRollup2 event. This ensures that only renamed executables that were subsequently executed are included.
+
 The include parameter in the join specifies that fields such as SourceFileName, TargetFileName, and SHA256HashData from the NewExecutableRenamed event should be included in the result.
 The table function is used to display relevant fields, including the timestamp, sensor ID (aid), computer name, source file name (original name of the executable), target file name (new name of the executable), image file name (name of the executed file), command line, and SHA256 hash data.
+
