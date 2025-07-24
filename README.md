@@ -81,3 +81,40 @@ The join is performed on the aid (sensor ID) and the TargetFileName from the New
 The include parameter in the join specifies that fields such as SourceFileName, TargetFileName, and SHA256HashData from the NewExecutableRenamed event should be included in the result.
 The table function is used to display relevant fields, including the timestamp, sensor ID (aid), computer name, source file name (original name of the executable), target file name (new name of the executable), image file name (name of the executed file), command line, and SHA256 hash data.
 
+Suspicious Network Connections from Processes
+-
+```
+(#event_simpleName=NetworkConnectIP4 OR #event_simpleName=NetworkConnectIP6)
+| join(query={
+    #event_simpleName=ProcessRollup2
+    | select([aid, TargetProcessId, ImageFileName, CommandLine])
+}, field=[aid, ContextProcessId], key=[aid, TargetProcessId], mode=inner)
+| !cidr(RemoteAddressIP4, subnet=["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"])
+| table([@timestamp, ComputerName, ImageFileName, CommandLine, RemoteAddressIP4, RemoteAddressIP6, RemotePort, LocalPort, Protocol])
+```
+
+This identifies suspicious network connections by correlating network connection events (NetworkConnectIP4 and NetworkConnectIP6) with the processes responsible for those connections (ProcessRollup2). It filters out connections to private IP ranges (RFC1918 addresses) to focus on external connections, which are more likely to be suspicious. The query outputs relevant fields such as the timestamp, computer name, process details (ImageFileName and CommandLine), and connection details (remote and local IPs, ports, and protocol) for further analysis.
+
+Additionally, we can filter out some traffic by removing connections to Google, Microsoft, and Cloudflare with the following:
+```
+| !in(RemoteAddressIP4, values=["8.8.8.8", "8.8.4.4", "1.1.1.1", "1.0.0.1"]) // Exclude common IPs like Google and Cloudflare
+| !in(RemoteAddressIP6, values=["2001:4860:4860::8888", "2001:4860:4860::8844", "2606:4700:4700::1111", "2606:4700:4700::1001"])
+```
+
+So an updated query might look like:
+```
+#event_simpleName=NetworkConnectIP4 OR #event_simpleName=NetworkConnectIP6
+| !in(RemoteAddressIP4, values=["8.8.8.8", "8.8.4.4", "1.1.1.1", "1.0.0.1"]) // Exclude common IPs like Google and Cloudflare
+| !in(RemoteAddressIP6, values=["2001:4860:4860::8888", "2001:4860:4860::8844", "2606:4700:4700::1111", "2606:4700:4700::1001"]) // Exclude common IPv6 addresses
+| join(query={
+#event_simpleName=ProcessRollup2
+| rename(field="TargetProcessId", as="ConnectionProcessId")
+| rename(field="ImageFileName", as="ProcessImageFileName")},
+field=[aid, ContextProcessId],
+key=[aid, ConnectionProcessId],
+mode=inner,
+include=[ProcessImageFileName],
+limit=200000)
+| table([@timestamp, ComputerName, RemoteAddressIP4, RemoteAddressIP6, RemotePort, LocalPort, Protocol, ProcessImageFileName], limit=20000)
+```
+And this will output the full path to the application making the connection.
