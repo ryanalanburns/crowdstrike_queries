@@ -176,3 +176,21 @@ SuspiciousRegAsepUpdate: Highlights suspicious registry auto-start entry point u
 
 This query will help identify any modifications to those keys:
 ```
+#event_simpleName=RegGenericValueUpdate OR #event_simpleName=RegSystemConfigValueUpdate OR #event_simpleName=RegistryOperationBlocked OR #event_simpleName=RegistryOperationDetectInfo OR #event_simpleName=ScheduledTaskTamperingRegistryOperation OR #event_simpleName=SuspiciousRegAsepUpdate
+| RegistryDescription:=
+if(regex("1", field=RegOperationType), then="Key value added or modified", else=
+if(regex("2", field=RegOperationType), then="Key value deleted", else=
+if(regex("3", field=RegOperationType), then="New key created", else=
+if(regex("4", field=RegOperationType), then="Key deleted", else=
+if(regex("5", field=RegOperationType), then="Key security modified", else=
+if(regex("6", field=RegOperationType), then="Key loaded", else=
+if(regex("7", field=RegOperationType), then="Key renamed", else=
+if(regex("8", field=RegOperationType), then="Key opened", else=
+if(regex("9", field=RegOperationType), then="Key name queried", else=
+if(regex("101", field=RegOperationType), then="Falcon sensor key value added or modified", else=
+if(regex("102", field=RegOperationType), then="Falcon sensor key value deleted", else=
+"Unknown"
+)))))))))))
+| table([timestamp,aid,ComputerName, RegistryDescription])
+```
+Consider adding a limit for more results. It gets capped at 200 by default, but the timeline of events graph should line up with your updates in your environment
