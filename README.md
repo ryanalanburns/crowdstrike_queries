@@ -55,6 +55,14 @@ the UserIsAdmin portion.
 | groupBy([UserName, ComputerName])
 ```
 
+This is an alternative that will help prioritize your remediation or scope out what is most impactful.
+```
+#event_simpleName=UserLogonFailed2
+| groupBy([UserName, ComputerName], function=count(as="FailedLoginCount"))
+| test(FailedLoginCount > 10)
+| sort(FailedLoginCount, order=desc)
+| table([UserName, ComputerName, FailedLoginCount])
+```
 Identify events where an executable file has been renamed and then run.
 -
 This query helps in identifying potential malicious activity where an executable is renamed (possibly to evade detection) and then executed.
@@ -118,3 +126,53 @@ limit=200000)
 | table([@timestamp, ComputerName, RemoteAddressIP4, RemoteAddressIP6, RemotePort, LocalPort, Protocol, ProcessImageFileName], limit=20000)
 ```
 And this will output the full path to the application making the connection.
+
+Suspicious Processes based on Activity
+-
+```
+#event_simpleName=ProcessRollup2
+| in(ImageFileName, values=["powershell.exe", "cmd.exe"])
+| CommandLine=/(-enc|-encodedcommand|Invoke-WebRequest|Net.WebClient|Start-BitsTransfer|IEX|DownloadString)/i
+| table([ComputerName, UserName, ImageFileName, CommandLine, @timestamp], limit=20000)
+```
+This is aimed at identifying suspicious processes by focusing on specific processes known to be used in malicious activities, such as powershell.exe and cmd.exe. It also filters for unusual or potentially malicious command-line arguments, such as encoded commands (-enc, -encodedcommand), web requests (Invoke-WebRequest, Net.WebClient, Start-BitsTransfer), and other suspicious patterns (IEX, DownloadString).
+
+Process creation with Unusal Paths
+-
+```
+#event_simpleName=ProcessRollup2
+| regex(field=ImageFileName, "^(?!.*\\\\(Windows|Program Files|Program Files \(x86\)|System32|SysWOW64)\\\\).*\\\\.*\.exe$")
+| table([@timestamp, ComputerName, UserName, ImageFileName, CommandLine, ParentBaseFileName])
+```
+The output should pretty quickly tell you what process/parent application is running and where. For me, I get a lot of activity for my MDM solution and developer's python envs.
+
+Search for Process Hollowing or Injection
+-
+```
+#event_simpleName=ProcessInjection
+| in(ThreadExecutionControlType, values=[3, 5])
+| table([@timestamp, ComputerName, InjectorImageFileName, InjecteeImageFileName, ThreadExecutionControlType, MemoryDescriptionFlags, WellKnownTargetFunction])
+```
+In my env, management has allowed users to run games on their corporate laptops. Kind of sucks, but the big thing here is game engines often have anti-cheat engines that inject processes into what feels like everything. Also, youll find a few things like Acrobat_Set-Up will inject Explorer and your printer drivers/apps will also do crazy stuff. All that to say, this is typically a good starting point and dont be intimidated by the results.
+
+Search for Ransomware file extensions
+-
+```
+#event_simpleName=*FileWritten*
+| TargetFileName=/\.(lock|ransom)$/i
+| table([@timestamp, aid, ComputerName, TargetFileName, UserName])
+```
+Pretty straightforward. Basically, create a file and do a .lock or .ransom and then make sure youre pulling it. From there, I would pivot over to SOAR and make this an automatic quarantine. Realistically, CS should find and stop this first.
+
+Registry Key Modificaiton
+- 
+These are some most often targeted keys:
+```
+AsepKeyUpdate: Indicates modifications to Auto Start Execution Point (ASEP) registry keys.
+RegGenericValueUpdate: Captures updates to generic registry values.
+RegSystemConfigValueUpdate: Tracks changes to registry values associated with system configuration or security settings.
+SuspiciousRegAsepUpdate: Highlights suspicious registry auto-start entry point updates.
+```
+
+This query will help identify any modifications to those keys:
+```
