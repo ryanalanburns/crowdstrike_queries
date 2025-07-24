@@ -54,3 +54,28 @@ the UserIsAdmin portion.
 | UserIsAdmin = 1
 | groupBy([UserName, ComputerName])
 ```
+
+Identify events where an executable file has been renamed and then run.
+-
+This query helps in identifying potential malicious activity where an executable is renamed (possibly to evade detection) and then executed.
+```
+#event_simpleName=NewExecutableRenamed OR #event_simpleName=ProcessRollup2
+| join(
+    query={
+        #event_simpleName=NewExecutableRenamed
+    },
+    include=[SourceFileName, TargetFileName, SHA256HashData],
+    field=[aid, TargetFileName],
+    key=[aid, ImageFileName],
+    mode=inner
+)
+| table([@timestamp, aid, ComputerName, SourceFileName, TargetFileName, ImageFileName, CommandLine, SHA256HashData])
+```
+Here's how it works:
+
+The query starts by filtering for events of type NewExecutableRenamed (indicating an executable file was renamed) and ProcessRollup2 (indicating a process was executed).
+
+A join operation is used to correlate the NewExecutableRenamed events with ProcessRollup2 events. 
+The join is performed on the aid (sensor ID) and the TargetFileName from the NewExecutableRenamed event with the ImageFileName from the ProcessRollup2 event. This ensures that only renamed executables that were subsequently executed are included.
+The include parameter in the join specifies that fields such as SourceFileName, TargetFileName, and SHA256HashData from the NewExecutableRenamed event should be included in the result.
+The table function is used to display relevant fields, including the timestamp, sensor ID (aid), computer name, source file name (original name of the executable), target file name (new name of the executable), image file name (name of the executed file), command line, and SHA256 hash data.
